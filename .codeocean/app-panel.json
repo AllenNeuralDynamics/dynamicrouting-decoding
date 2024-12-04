@@ -1,0 +1,24 @@
+{
+	"version": 1,
+	"named_parameters": true,
+	"parameters": [
+		{
+			"id": "xxVUgdPR32dB7B9H",
+			"name": "session_id",
+			"param_name": "session_id",
+			"description": "Provide a single session ID \u003csubjectID\u003e_\u003cyyyy-mm-dd\u003e (default empty: run for all sessions in datacube)",
+			"type": "text",
+			"value_type": "string"
+		},
+		{
+			"id": "CKVquiTjW2bADhJk",
+			"name": "test",
+			"param_name": "test",
+			"description": "Run the capsule in test mode, which should finish quickly",
+			"type": "text",
+			"value_type": "integer",
+			"default_value": "1",
+			"maximum": 1
+		}
+	]
+}
