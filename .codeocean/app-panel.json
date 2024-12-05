@@ -46,6 +46,16 @@
 			"value_type": "integer",
 			"default_value": "1",
 			"maximum": 1
+		},
+		{
+			"id": "SwennXmUnO9E9T0D",
+			"name": "update_packages_from_source",
+			"param_name": "update_packages_from_source",
+			"description": "If 1, auto-updates package(s) (e.g.  dynamic-routing-analysis) on each run. Disable for quicker testing",
+			"type": "text",
+			"value_type": "integer",
+			"default_value": "1",
+			"maximum": 1
 		}
 	]
 }

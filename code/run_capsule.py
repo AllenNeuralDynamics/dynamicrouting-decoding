@@ -46,11 +46,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--skip_existing', type=int, default=1)
     parser.add_argument('--test', type=int, default=0)
     for field in dataclasses.fields(Params):
-        if field in [getattr(action, 'dest') for action in parser._actions]:
+        if field.name in [getattr(action, 'dest') for action in parser._actions]:
             # already added field above
             continue
-        logger.debug(f"adding argparse argument {field}")   
-    args = parser.parse_args()
+        logger.debug(f"adding argparse argument {field}")  
+        if isinstance(field.type, str):
+            type_ = eval(field.type)
+        else:
+            type_ = field.type
+        parser.add_argument(f'--{field.name}', type=type_)
+    args = parser.parse_known_args()[0]
     logger.info(f"{args=}")
     return args
 
@@ -155,7 +160,7 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
         logger.info(f"Test mode: using modified set of parameters")
 
     if skip_existing and params.file_path.exists():
-        logger.info(f"{file_path} exists: processing skipped")
+        logger.info(f"{params.file_path} exists: processing skipped")
         return
     
     # Get components from the nwb file:
@@ -177,7 +182,7 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
     del session
     gc.collect()
 
-    logger.info(f'making summary tables of decoding results for {session_id}}')
+    logger.info(f'making summary tables of decoding results for {session_id}')
     decoding_results = decoding_utils.concat_decoder_results(
         files=[params.file_path],
         savepath=params.savepath,
@@ -206,7 +211,7 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
             single_session=True,
         )
 
-    logger.info('writing params file for {session_id}}')
+    logger.info('writing params file for {session_id}')
     params.write_json(params.file_path.with_suffix('.json'))
     
     
