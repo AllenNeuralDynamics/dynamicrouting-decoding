@@ -3,6 +3,7 @@ from __future__ import annotations
 # stdlib imports --------------------------------------------------- #
 import argparse
 import dataclasses
+import gc
 import json
 import functools
 import logging
@@ -11,6 +12,7 @@ import uuid
 from typing import Literal
 
 # 3rd-party imports necessary for processing ----------------------- #
+import npc_lims
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -42,9 +44,18 @@ logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR) # suppress 
 def parse_args() -> argparse.Namespace:
     argParser = argparse.ArgumentParser()
     argParser.add_argument('--session_id', type=str, default=None)
+    argParser.add_argument('--logging_level', type=str, default='INFO')
+    argParser.add_argument('--skip_existing', type=int, default=1)
     argParser.add_argument('--test', type=int, default=0)
     for field in dataclasses.fields(Params):
-        argParser.add_argument(f'--{field.name}', type=field.type, default=None)
+        if field.name in ('session_id', 'test'):
+            continue
+        logger.debug(f"adding argparse argument {field}")
+        if isinstance(field.type, str):
+            type_ = eval(field.type)
+        else:
+            type_ = field.type
+        argParser.add_argument(f'--{field.name}', type=type_, default=None)
     args = argParser.parse_args()
     logger.info(f"{args=}")
     return args
@@ -80,16 +91,26 @@ def get_nwb_paths() -> tuple[pathlib.Path, ...]:
     return tuple(get_data_root().rglob('*.nwb'))
     
 
-def get_nwb(session_id: str, raise_on_missing: bool = True, raise_on_bad_file: bool = True) -> pynwb.NWBFile:
-    try:
-        nwb_path = next(p for p in get_nwb_paths() if p.stem == session_id)
-    except StopIteration:
-        msg = f"Could not find NWB file for {session_id!r}"
-        if not raise_on_missing:
-            logger.error(msg)
-            return
+def get_nwb(session_id_or_path: str | pathlib.Path, raise_on_missing: bool = True, raise_on_bad_file: bool = True) -> pynwb.NWBFile:
+    if isinstance(session_id_or_path, (pathlib.Path, upath.UPath)):
+        nwb_path = session_id_or_path
+    else:
+        if not isinstance(session_id_or_path, str):
+            raise TypeError(f"Input should be a session ID (str) or path to an NWB file (str/Path), got: {session_id_or_path!r}")
+        if pathlib.Path(session_id_or_path).exists():
+            nwb_path = session_id_or_path
+        elif session_id_or_path.endswith(".nwb") and any(p.name == session_id_or_path for p in get_nwb_paths()):
+            nwb_path = next(p for p in get_nwb_paths() if p.name == session_id_or_path)
         else:
-            raise FileNotFoundError(f"{msg}. Available files: {[p.name for p in get_nwb_paths()]}") from None
+            try:
+                nwb_path = next(p for p in get_nwb_paths() if p.stem == session_id_or_path)
+            except StopIteration:
+                msg = f"Could not find NWB file for {session_id_or_path!r}"
+                if not raise_on_missing:
+                    logger.error(msg)
+                    return
+                else:
+                    raise FileNotFoundError(f"{msg}. Available files: {[p.name for p in get_nwb_paths()]}") from None
     logger.info(f"Reading {nwb_path}")
     try:
         nwb = pynwb.NWBHDF5IO(nwb_path).read()
@@ -113,7 +134,7 @@ def ensure_nonempty_results_dir() -> None:
 # processing function ---------------------------------------------- #
 # modify the body of this function, but keep the same signature
 
-def process_session(session_id: str, params: "Params", test: int = 0) -> None:
+def process_session(session_id: str, params: "Params", test: int = 0, skip_existing: bool = False) -> None:
     """Process a single session with parameters defined in `params` and save results + params to
     /results.
     
@@ -125,6 +146,7 @@ def process_session(session_id: str, params: "Params", test: int = 0) -> None:
     # - the file is missing from the datacube, or we have the path to the datacube wrong (raises a FileNotFoundError)
     # - the file is corrupted due to a bad write (raises a RecursionError)
     # Choose how to handle these as appropriate for your capsule
+
     try:
         session = get_nwb(session_id, raise_on_missing=True, raise_on_bad_file=True) 
     except (FileNotFoundError, RecursionError) as exc:
@@ -133,26 +155,24 @@ def process_session(session_id: str, params: "Params", test: int = 0) -> None:
     
     if test:
         params.only_use_all_units = True
+        params.n_repeats = 2
         logger.info(f"Test mode: setting {params.only_use_all_units=}")
 
-    if args.skip_existing:
-        file_path=path_utils.DECODING_ROOT_PATH / folder_name / f"{args.session_id}_{args.run_id}.pkl"
-        if file_path.is_file():
-            print(str(file_path)+' exists; skipping...')
+    if skip_existing:
+        if params.file_path.exists():
+            logger.info(f"{file_path} exists: processing skipped")
             return
     
     # Get components from the nwb file:
     trials = session.trials[:]
-    units = session.units[:]
+    units = session.units[:].query(params.units_query)
     
     #units: pd.DataFrame =  utils.remove_pynwb_containers_from_table(units[:])
     units['session_id'] = session_id
     units.drop(columns=['waveform_sd','waveform_mean'], inplace=True, errors='ignore')
-
-    #unit inclusion criteria option
-
+                                   
     logger.info(f'starting decode_context_with_linear_shift for {session_id} with {params.to_json()}')
-    decoding_utils.decode_context_with_linear_shift(session=None,params=decoding_params,trials=trials,units=units,session_info=session_info)
+    decoding_utils.decode_context_with_linear_shift(session=session,params=params.to_dict(),trials=trials,units=units,session_info=npc_lims.get_session_info(session_id))
 
     del units
     del trials
@@ -162,9 +182,6 @@ def process_session(session_id: str, params: "Params", test: int = 0) -> None:
     #make summary tables
 
     #find path of decoder result
-    savepath = path_utils.DECODING_ROOT_PATH / folder_name
-    file_path = savepath / f"{args.session_id}_{args.run_id}.pkl"
-    
     decoding_results=decoding_utils.concat_decoder_results(params.file_path,savepath=params.savepath,return_table=True,single_session=True)
 
     #find n_units to loop through for next step
@@ -198,19 +215,14 @@ def process_session(session_id: str, params: "Params", test: int = 0) -> None:
 #   to the dataclass (see `main()` below)
 
 # this is an example from Sam's processing code, replace with your own parameters as needed:
-def get_current_time() -> str:
-    return datetime.datetime.now().isoformat(timespec='seconds')
-
 @dataclasses.dataclass
 class Params:
     session_id: str = ""
-    savepath_root: str = path_utils.DECODING_ROOT_PATH.as_posix()
-    """Root dir on S3 for all decoding folders"""
     run_id: str = ""
-    """ A unique string that should be attached to all decoding runs in the same batch"""
+    """A unique string that should be attached to all decoding runs in the same batch"""
     folder_name: str = "n_units_test"
     unit_criteria: str = 'medium'
-    n_units: list = [5, 10, 20, 40, 60, 'all']
+    n_units: list = dataclasses.field(default_factory=lambda: [5, 10, 20, 40, 60, 'all'])
     """number of units to sample for each area"""
     n_repeats: int = 25
     """number of times to repeat decoding with different randomly sampled units"""
@@ -225,7 +237,7 @@ class Params:
     """minimum number of units to include an area in the analysis"""
     keep_n_SVDs: int = 500
     """number of SVD components to keep for facemap data"""
-    LP_parts_to_keep: list = ['ear_base_l', 'eye_bottom_l', 'jaw', 'nose_tip', 'whisker_pad_l_side']
+    LP_parts_to_keep: list = dataclasses.field(default_factory=lambda: ['ear_base_l', 'eye_bottom_l', 'jaw', 'nose_tip', 'whisker_pad_l_side'])
     spikes_binsize: float = 0.2
     spikes_time_before: float = 0.2
     spikes_time_after: float = 0.01
@@ -241,28 +253,36 @@ class Params:
 
     @property
     def savepath(self) -> upath.UPath:
-        return upath.UPath(self.savepath_root) / f"{self.folder_name}_{self.run_id}" 
+        return path_utils.DECODING_ROOT_PATH / f"{self.folder_name}_{self.run_id}" 
+
+    @property
+    def filename(self) -> str:
+        return f"{self.session_id}_{self.run_id}.pkl"
 
     @property
     def file_path(self) -> upath.UPath:
-        return self.savepath / f"{self.session_id}_{self.run_id}.pkl"
+        return self.savepath / self.filename
     
     @property
     def units_query(self) -> str:
         if self.unit_criteria == 'medium':
-            'isi_violations_ratio<=0.5 and presence_ratio>=0.9 and amplitude_cutoff<=0.1'
+            return 'isi_violations_ratio<=0.5 and presence_ratio>=0.9 and amplitude_cutoff<=0.1'
         elif self.unit_criteria == 'strict':
-            'isi_violations_ratio<=0.1 and presence_ratio>=0.99 and amplitude_cutoff<=0.1'
+            return 'isi_violations_ratio<=0.1 and presence_ratio>=0.99 and amplitude_cutoff<=0.1'
         else:
             raise ValueError(f"No units query available for {self.unit_criteria=!r}")
 
     def to_json(self, **dumps_kwargs) -> str:
+        """json string of field name: value pairs, excluding values from property getters (which may be large)"""
         return json.dumps(dataclasses.asdict(self), **dumps_kwargs)
 
     def write_json(self, path: str = '/results/params.json') -> str:
         logger.info(f"Writing params to {path}")
         pathlib.Path(path).write_text(self.to_json(indent=2))
 
+    def to_dict(self) -> dict[str, Any]:
+        """dict of field name: value pairs, including values from property getters"""
+        return dataclasses.asdict(self) | {k: getattr(self, k) for k in dir(self.__class__) if isinstance(getattr(self.__class__, k), property)}
 
 # ------------------------------------------------------------------ #
 
@@ -270,14 +290,14 @@ class Params:
 def main():
     # get arguments passed from command line (or "AppBuilder" interface):
     args = parse_args()
-    
+    logger.setLevel(args.logging_level)
+
     # if any of the parameters required for processing are passed as command line arguments, we can
     # get a new params object with these values in place of the defaults:
-    p = {}
+    params = {}
     for field in dataclasses.fields(Params):
         if (val := getattr(args, field.name, None)) is not None:
-            p[field.name] = val
-    params = Params(**p)
+            params[field.name] = val
     
     # if session_id is passed as a command line argument, we will only process that session,
     # otherwise we process all session IDs that match filtering criteria:    
@@ -296,7 +316,7 @@ def main():
 
     # run processing function for each session, with test mode implemented:
     for session_id in session_ids:
-        process_session(session_id, params=params, test=args.test)
+        process_session(session_id, params=Params(**params | {'session_id': session_id}), test=args.test, skip_existing=args.skip_existing)
         if args.test:
             logger.info("Test mode: exiting after first session")
             break
