@@ -3,7 +3,9 @@ set -ex
 
 # use the following to always install the latest version of a package from source:
 # --------------------------------------------------------------------------------
-# update pip to ensure we can install a package from pyproject.toml 
+if [[ "$@" =~ "--test=0" ]]; then
+echo "Test mode is off - updating package(s) from sources"
+update pip to ensure we can install a package from pyproject.toml 
 export PIP_ROOT_USER_ACTION=ignore
 python -m pip install -U pip -q
 
@@ -16,6 +18,7 @@ pip install -e . -q
 commit_hash=$(git rev-parse HEAD)
 echo dynamic_routing_analysis: $commit_hash
 cd ..
+fi
 # --------------------------------------------------------------------------------
 
 # This is the master script for the capsule. When you click "Reproducible Run", the code in this file will execute.

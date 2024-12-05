@@ -12,7 +12,6 @@ import uuid
 from typing import Literal
 
 # 3rd-party imports necessary for processing ----------------------- #
-import npc_lims
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -155,8 +154,8 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
     
     if test:
         params.only_use_all_units = True
-        params.n_repeats = 2
-        logger.info(f"Test mode: setting {params.only_use_all_units=}")
+        params.n_repeats = 1
+        logger.info(f"Test mode is ON: using modified set of parameters")
 
     if skip_existing:
         if params.file_path.exists():
@@ -166,13 +165,16 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
     # Get components from the nwb file:
     trials = session.trials[:]
     units = session.units[:].query(params.units_query)
-    
+    if test:
+        logger.info(f"Test mode is ON: using reduced set of units")
+        units = units.head(5)
+
     #units: pd.DataFrame =  utils.remove_pynwb_containers_from_table(units[:])
     units['session_id'] = session_id
     units.drop(columns=['waveform_sd','waveform_mean'], inplace=True, errors='ignore')
                                    
     logger.info(f'starting decode_context_with_linear_shift for {session_id} with {params.to_json()}')
-    decoding_utils.decode_context_with_linear_shift(session=session,params=params.to_dict(),trials=trials,units=units,session_info=npc_lims.get_session_info(session_id))
+    decoding_utils.decode_context_with_linear_shift(session=session,params=params.to_dict(),trials=trials,units=units)
 
     del units
     del trials
