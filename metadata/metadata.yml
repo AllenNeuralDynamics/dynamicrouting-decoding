@@ -1,5 +1,6 @@
 metadata_version: 1
-name: dynamicrouting-processing-template
-description: Basic structure of a capsule to be customized as needed.
+name: dynamicrouting-decoding
+description: Processing capsule for decoding analysis
 authors:
 - name: Ben Hardcastle
+- name: Ethan McBride
