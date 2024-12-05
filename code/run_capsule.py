@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # stdlib imports --------------------------------------------------- #
 import argparse
 import dataclasses
@@ -6,6 +8,7 @@ import functools
 import logging
 import pathlib
 import uuid
+from typing import Literal
 
 # 3rd-party imports necessary for processing ----------------------- #
 import numpy as np
@@ -15,7 +18,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 import sklearn
 import pynwb
+import upath
 import zarr
+from dynamic_routing_analysis import spike_utils, decoding_utils, data_utils, path_utils
 
 
 # logging configuration -------------------------------------------- #
@@ -121,32 +126,67 @@ def process_session(session_id: str, params: "Params", test: int = 0) -> None:
     # - the file is corrupted due to a bad write (raises a RecursionError)
     # Choose how to handle these as appropriate for your capsule
     try:
-        nwb = get_nwb(session_id, raise_on_missing=True, raise_on_bad_file=True) 
+        session = get_nwb(session_id, raise_on_missing=True, raise_on_bad_file=True) 
     except (FileNotFoundError, RecursionError) as exc:
         logger.info(f"Skipping {session_id}: {exc!r}")
         return
     
-    # Get components from the nwb file:
-    trials_df = nwb.trials[:]
-    units_df = nwb.units[:]
+    if test:
+        params.only_use_all_units = True
+        logger.info(f"Test mode: setting {params.only_use_all_units=}")
+
+    if args.skip_existing:
+        file_path=path_utils.DECODING_ROOT_PATH / folder_name / f"{args.session_id}_{args.run_id}.pkl"
+        if file_path.is_file():
+            print(str(file_path)+' exists; skipping...')
+            return
     
-    # Process data here, with test mode implemented to break out of the loop early:
-    logger.info(f"Processing {session_id} with {params.to_json()}")
-    results = {}
-    for structure, structure_df in units_df.groupby('structure'):
-        results[structure] = len(structure_df)
-        if test:
-            logger.info("Test mode: exiting after first structure")
-            break
+    # Get components from the nwb file:
+    trials = session.trials[:]
+    units = session.units[:]
+    
+    #units: pd.DataFrame =  utils.remove_pynwb_containers_from_table(units[:])
+    units['session_id'] = session_id
+    units.drop(columns=['waveform_sd','waveform_mean'], inplace=True, errors='ignore')
 
-    # Save data to files in /results
-    # If the same name is used across parallel runs of this capsule in a pipeline, a name clash will
-    # occur and the pipeline will fail, so use session_id as filename prefix:
-    #   /results/<sessionId>.suffix
-    logger.info(f"Writing results for {session_id}")
-    np.savez(f'/results/{session_id}.npz', **results)
-    params.write_json(f'/results/{session_id}.json')
+    #unit inclusion criteria option
 
+    logger.info(f'starting decode_context_with_linear_shift for {session_id} with {params.to_json()}')
+    decoding_utils.decode_context_with_linear_shift(session=None,params=decoding_params,trials=trials,units=units,session_info=session_info)
+
+    del units
+    del trials
+    del session
+    gc.collect()
+
+    #make summary tables
+
+    #find path of decoder result
+    savepath = path_utils.DECODING_ROOT_PATH / folder_name
+    file_path = savepath / f"{args.session_id}_{args.run_id}.pkl"
+    
+    decoding_results=decoding_utils.concat_decoder_results(params.file_path,savepath=params.savepath,return_table=True,single_session=True)
+
+    #find n_units to loop through for next step
+    n_units=[]
+    for col in decoding_results.filter(like='true_accuracy_').columns.values:
+        if len(col.split('_'))==3:
+            temp_n_units=col.split('_')[2]
+            try:
+                n_units.append(int(temp_n_units))
+            except:
+                n_units.append(temp_n_units)
+        else:
+            n_units.append(None)
+
+    decoding_results=[]
+
+    for nu in n_units:
+        decoding_utils.concat_trialwise_decoder_results(file_path,savepath=savepath,return_table=False,n_units=nu,single_session=True)
+
+    params.write_json(params.file_path.with_suffix('.json'))
+    
+    
 # define run params here ------------------------------------------- #
 
 # The `Params` class is used to store parameters for the run, for passing to the processing function.
@@ -158,23 +198,64 @@ def process_session(session_id: str, params: "Params", test: int = 0) -> None:
 #   to the dataclass (see `main()` below)
 
 # this is an example from Sam's processing code, replace with your own parameters as needed:
+def get_current_time() -> str:
+    return datetime.datetime.now().isoformat(timespec='seconds')
+
 @dataclasses.dataclass
 class Params:
-    nUnitSamples: int = 20
-    unitSampleSize: int = 20
-    windowDur: float = 1
-    binSize: float = 1
-    nShuffles: int = 100
-    binStart: int = -windowDur
-    
-    @property
-    def bins(self) -> npt.NDArray[np.float64]:
-        return np.arange(self.binStart, self.windowDur+self.binSize, self.binSize)
+    session_id: str = ""
+    savepath_root: str = path_utils.DECODING_ROOT_PATH.as_posix()
+    """Root dir on S3 for all decoding folders"""
+    run_id: str = ""
+    """ A unique string that should be attached to all decoding runs in the same batch"""
+    folder_name: str = "n_units_test"
+    unit_criteria: str = 'medium'
+    n_units: list = [5, 10, 20, 40, 60, 'all']
+    """number of units to sample for each area"""
+    n_repeats: int = 25
+    """number of times to repeat decoding with different randomly sampled units"""
+    input_data_type: str | Literal['spikes', 'facemap', 'LP'] = 'spikes'
+    vid_angle_facemotion: str | Literal['behavior', 'face', 'eye'] = 'face'
+    vid_angle_LP: str | Literal['behavior', 'face', 'eye'] = 'behavior'
+    central_section: str = '4_blocks_plus'
+    """or linear shift decoding, how many trials to use for the shift. '4_blocks_plus' is best"""
+    exclude_cue_trials: bool = False
+    """option to totally exclude autorewarded trials"""
+    n_unit_threshold: int = 5
+    """minimum number of units to include an area in the analysis"""
+    keep_n_SVDs: int = 500
+    """number of SVD components to keep for facemap data"""
+    LP_parts_to_keep: list = ['ear_base_l', 'eye_bottom_l', 'jaw', 'nose_tip', 'whisker_pad_l_side']
+    spikes_binsize: float = 0.2
+    spikes_time_before: float = 0.2
+    spikes_time_after: float = 0.01
+    use_structure_probe: bool = True
+    """if True, append probe name to area name when multiple probes in the same area"""
+    crossval: Literal['5_fold', 'blockwise'] = '5_fold'
+    """blockwise untested with linear shift"""
+    labels_as_index: bool = True
+    """convert labels (context names) to index [0,1]"""
+    decoder_type: str | Literal['linearSVC', 'LDA', 'RandomForest', 'LogisticRegression'] = 'LogisticRegression'
+    only_use_all_units: bool = False
+    """if True, do not run decoding with different areas, only with all areas -- for debugging"""
 
     @property
-    def nBins(self) -> int:
-        return self.bins.size - 1
+    def savepath(self) -> upath.UPath:
+        return upath.UPath(self.savepath_root) / f"{self.folder_name}_{self.run_id}" 
+
+    @property
+    def file_path(self) -> upath.UPath:
+        return self.savepath / f"{self.session_id}_{self.run_id}.pkl"
     
+    @property
+    def units_query(self) -> str:
+        if self.unit_criteria == 'medium':
+            'isi_violations_ratio<=0.5 and presence_ratio>=0.9 and amplitude_cutoff<=0.1'
+        elif self.unit_criteria == 'strict':
+            'isi_violations_ratio<=0.1 and presence_ratio>=0.99 and amplitude_cutoff<=0.1'
+        else:
+            raise ValueError(f"No units query available for {self.unit_criteria=!r}")
+
     def to_json(self, **dumps_kwargs) -> str:
         return json.dumps(dataclasses.asdict(self), **dumps_kwargs)
 
