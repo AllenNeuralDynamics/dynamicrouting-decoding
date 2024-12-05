@@ -9,7 +9,7 @@ import functools
 import logging
 import pathlib
 import uuid
-from typing import Literal
+from typing import Any, Literal
 
 # 3rd-party imports necessary for processing ----------------------- #
 import numpy as np
