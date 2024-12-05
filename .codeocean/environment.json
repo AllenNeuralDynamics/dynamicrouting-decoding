@@ -1,6 +1,11 @@
 {
 	"version": 1,
 	"base_image": "codeocean/mambaforge3:23.1.0-4-python3.10.12-ubuntu22.04",
+	"args": [
+		"AWS_ACCESS_KEY_ID",
+		"AWS_DEFAULT_REGION",
+		"AWS_SECRET_ACCESS_KEY"
+	],
 	"options": {
 		"registry_host_arg": true,
 		"git_ask_pass": true
@@ -17,6 +22,10 @@
 		},
 		"pip3": {
 			"packages": [
+				{
+					"name": "git+https://github.com/AllenInstitute/dynamic_routing_analysis#egg=dynamic-routing-analysis",
+					"version": "1d9e3a8e3908b01224feda49613f0feb23742c58"
+				},
 				{
 					"name": "matplotlib",
 					"version": "3.9.2"
@@ -35,7 +44,7 @@
 				},
 				{
 					"name": "zarr",
-					"version": "2.18.3"
+					"version": "2.18.0"
 				}
 			],
 			"options": {},
