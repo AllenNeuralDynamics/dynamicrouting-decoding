@@ -28,8 +28,7 @@ from dynamic_routing_analysis import spike_utils, decoding_utils, data_utils, pa
 # use `logger.info(msg)` instead of `print(msg)` so we get timestamps and origin of log messages
 logging.basicConfig(
     level=logging.INFO, 
-    format="%(asctime)s | %(name)s.%(funcName)s | %(levelname)s | %(message)s", 
-    datefmt="%Y-%d-%m %H:%M:%S",
+    format="%(asctime)s | %(levelname)s | %(name)s.%(funcName)s | %(message)s",     datefmt="%Y-%d-%m %H:%M:%S",
     )
 logger = logging.getLogger(__name__)
 
@@ -41,21 +40,17 @@ logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR) # suppress 
 # utility functions ------------------------------------------------ #
 
 def parse_args() -> argparse.Namespace:
-    argParser = argparse.ArgumentParser()
-    argParser.add_argument('--session_id', type=str, default=None)
-    argParser.add_argument('--logging_level', type=str, default='INFO')
-    argParser.add_argument('--skip_existing', type=int, default=1)
-    argParser.add_argument('--test', type=int, default=0)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--session_id', type=str, default=None)
+    parser.add_argument('--logging_level', type=str, default='INFO')
+    parser.add_argument('--skip_existing', type=int, default=1)
+    parser.add_argument('--test', type=int, default=0)
     for field in dataclasses.fields(Params):
-        if field.name in ('session_id', 'test'):
+        if field in [getattr(action, 'dest') for action in parser._actions]:
+            # already added field above
             continue
-        logger.debug(f"adding argparse argument {field}")
-        if isinstance(field.type, str):
-            type_ = eval(field.type)
-        else:
-            type_ = field.type
-        argParser.add_argument(f'--{field.name}', type=type_, default=None)
-    args = argParser.parse_args()
+        logger.debug(f"adding argparse argument {field}")   
+    args = parser.parse_args()
     logger.info(f"{args=}")
     return args
 
@@ -156,7 +151,7 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
         params.folder_name = f"test/{params.folder_name}"
         params.only_use_all_units = True
         params.n_units = ["all"]
-        params.n_repeats = 2
+        params.n_repeats = 1
         logger.info(f"Test mode: using modified set of parameters")
 
     if skip_existing and params.file_path.exists():
@@ -182,13 +177,15 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
     del session
     gc.collect()
 
-    #make summary tables
-
-    #find path of decoder result
-    decoding_results=decoding_utils.concat_decoder_results(params.file_path,savepath=params.savepath,return_table=True,single_session=True)
-
+    logger.info(f'making summary tables of decoding results for {session_id}}')
+    decoding_results = decoding_utils.concat_decoder_results(
+        files=[params.file_path],
+        savepath=params.savepath,
+        return_table=True,
+        single_session=True,
+    )
     #find n_units to loop through for next step
-    n_units=[]
+    n_units = []
     for col in decoding_results.filter(like='true_accuracy_').columns.values:
         if len(col.split('_'))==3:
             temp_n_units=col.split('_')[2]
@@ -199,11 +196,17 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
         else:
             n_units.append(None)
 
-    decoding_results=[]
-
+    decoding_results = []
     for nu in n_units:
-        decoding_utils.concat_trialwise_decoder_results(file_path,savepath=savepath,return_table=False,n_units=nu,single_session=True)
+        decoding_utils.concat_trialwise_decoder_results(
+            files=[file_path],
+            savepath=savepath,
+            return_table=False,
+            n_units=nu,
+            single_session=True,
+        )
 
+    logger.info('writing params file for {session_id}}')
     params.write_json(params.file_path.with_suffix('.json'))
     
     
@@ -221,9 +224,13 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
 # this is an example from Sam's processing code, replace with your own parameters as needed:
 @dataclasses.dataclass
 class Params:
+    # ----------------------------------------------------------------------------------
+    # defaults don't matter for these parameters, they will be updated later:
     session_id: str = ""
     run_id: str = ""
     """A unique string that should be attached to all decoding runs in the same batch"""
+    # ----------------------------------------------------------------------------------
+
     folder_name: str = "n_units_test"
     unit_criteria: str = 'medium'
     n_units: list = dataclasses.field(default_factory=lambda: [5, 10, 20, 40, 60, 'all'])
