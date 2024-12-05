@@ -156,7 +156,10 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
         params.folder_name = f"test/{params.folder_name}"
         params.only_use_all_units = True
         params.n_units = ["all"]
+        params.keep_n_SVDs = 5
+        params.LP_parts_to_keep = ["ear_base_l"]
         params.n_repeats = 1
+        params.n_unit_threshold = 5
         logger.info(f"Test mode: using modified set of parameters")
 
     if skip_existing and params.file_path.exists():
@@ -168,7 +171,7 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
     units = session.units[:].query(params.units_query)
     if test:
         logger.info(f"Test mode: using reduced set of units")
-        units = units.head(50)
+        units = units.sort_values('location').head(20)
 
     #units: pd.DataFrame =  utils.remove_pynwb_containers_from_table(units[:])
     units['session_id'] = session_id
@@ -204,8 +207,8 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
     decoding_results = []
     for nu in n_units:
         decoding_utils.concat_trialwise_decoder_results(
-            files=[file_path],
-            savepath=savepath,
+            files=[params.file_path],
+            savepath=params.savepath,
             return_table=False,
             n_units=nu,
             single_session=True,
@@ -292,9 +295,11 @@ class Params:
         """json string of field name: value pairs, excluding values from property getters (which may be large)"""
         return json.dumps(dataclasses.asdict(self), **dumps_kwargs)
 
-    def write_json(self, path: str = '/results/params.json') -> str:
+    def write_json(self, path: str | upath.UPath = '/results/params.json') -> None:
+        path = upath.UPath(path)
         logger.info(f"Writing params to {path}")
-        pathlib.Path(path).write_text(self.to_json(indent=2))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(self.to_json(indent=2))
 
     def to_dict(self) -> dict[str, Any]:
         """dict of field name: value pairs, including values from property getters"""
