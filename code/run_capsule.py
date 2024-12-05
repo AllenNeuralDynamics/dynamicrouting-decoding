@@ -153,21 +153,22 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
         return
     
     if test:
+        params.folder_name = f"test/{params.folder_name}"
         params.only_use_all_units = True
-        params.n_repeats = 1
-        logger.info(f"Test mode is ON: using modified set of parameters")
+        params.n_units = ["all"]
+        params.n_repeats = 2
+        logger.info(f"Test mode: using modified set of parameters")
 
-    if skip_existing:
-        if params.file_path.exists():
-            logger.info(f"{file_path} exists: processing skipped")
-            return
+    if skip_existing and params.file_path.exists():
+        logger.info(f"{file_path} exists: processing skipped")
+        return
     
     # Get components from the nwb file:
     trials = session.trials[:]
     units = session.units[:].query(params.units_query)
     if test:
-        logger.info(f"Test mode is ON: using reduced set of units")
-        units = units.head(5)
+        logger.info(f"Test mode: using reduced set of units")
+        units = units.head(50)
 
     #units: pd.DataFrame =  utils.remove_pynwb_containers_from_table(units[:])
     units['session_id'] = session_id
@@ -209,12 +210,13 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
 # define run params here ------------------------------------------- #
 
 # The `Params` class is used to store parameters for the run, for passing to the processing function.
-# @property fields (like `bins` below) are computed from other parameters on-demand as required:
+# @property methods (like `savepath` below) are computed from other parameters on-demand as required:
 # this way, we can separate the parameters dumped to json from larger arrays etc. required for
-# processing.
+# processing. We can also update other fields during test mode, and the updated values will be incoporated 
+# into these fields.
 
-# - if needed, we can get parameters from the command line (like `nUnitSamples` below) and pass them
-#   to the dataclass (see `main()` below)
+# - if needed, we can get parameters from the command line and pass them to the dataclass (see `main()` below):
+#   just add a field to the App Builder parameters with the same `Parameter Name`
 
 # this is an example from Sam's processing code, replace with your own parameters as needed:
 @dataclasses.dataclass
