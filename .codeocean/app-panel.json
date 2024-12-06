@@ -56,6 +56,31 @@
 			"value_type": "integer",
 			"default_value": "1",
 			"maximum": 1
+		},
+		{
+			"id": "uxoZwW2rMVHw8rAt",
+			"name": "folder_name",
+			"param_name": "folder_name",
+			"description": "high level description of run to include in folder name",
+			"type": "text",
+			"value_type": "string"
+		},
+		{
+			"id": "exDAGscNDd2rht1z",
+			"name": "decoder_type",
+			"param_name": "decoder_type",
+			"type": "text",
+			"value_type": "string",
+			"default_value": "'LogisticRegression'"
+		},
+		{
+			"id": "5Lq8N5fGlmWi7M3Z",
+			"name": "override_params_json",
+			"param_name": "override_params_json",
+			"description": "A json string of parameters to pass to Params class. Keys must be fields on Params class. Overrides values specified individually in App Builder",
+			"type": "text",
+			"value_type": "string",
+			"default_value": "{}"
 		}
 	]
 }

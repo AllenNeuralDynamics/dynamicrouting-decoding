@@ -8,6 +8,7 @@ import json
 import functools
 import logging
 import pathlib
+import time
 import uuid
 from typing import Any, Literal
 
@@ -43,8 +44,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--session_id', type=str, default=None)
     parser.add_argument('--logging_level', type=str, default='INFO')
-    parser.add_argument('--skip_existing', type=int, default=1)
     parser.add_argument('--test', type=int, default=0)
+    parser.add_argument('--override_params_json', type=str, default="{}")
     for field in dataclasses.fields(Params):
         if field.name in [getattr(action, 'dest') for action in parser._actions]:
             # already added field above
@@ -239,9 +240,9 @@ class Params:
     """A unique string that should be attached to all decoding runs in the same batch"""
     # ----------------------------------------------------------------------------------
 
-    folder_name: str = "n_units_test"
+    folder_name: str = "test"
     unit_criteria: str = 'medium'
-    n_units: list = dataclasses.field(default_factory=lambda: [5, 10, 20, 40, 60, 'all'])
+    n_units: list = dataclasses.field(default_factory=lambda: [5, 10, 20, 30, 40, 50, 'all'])
     """number of units to sample for each area"""
     n_repeats: int = 25
     """number of times to repeat decoding with different randomly sampled units"""
@@ -309,6 +310,8 @@ class Params:
 
 
 def main():
+    t0 = time.time()
+
     # get arguments passed from command line (or "AppBuilder" interface):
     args = parse_args()
     logger.setLevel(args.logging_level)
@@ -319,6 +322,13 @@ def main():
     for field in dataclasses.fields(Params):
         if (val := getattr(args, field.name, None)) is not None:
             params[field.name] = val
+    
+    override_params = json.loads(args.override_params_json)
+    if override_params:
+        for k, v in override_params.items():
+            if k in params:
+                logger.info(f"Overriding value of {k!r} from command line arg with value specified in `override_params_json`")
+            params[k] = v
     
     # if session_id is passed as a command line argument, we will only process that session,
     # otherwise we process all session IDs that match filtering criteria:    
@@ -342,6 +352,7 @@ def main():
             logger.info("Test mode: exiting after first session")
             break
     ensure_nonempty_results_dir()
+    logger.info(f"Time elapsed: {time.time() - t0:.2f} s")
 
 if __name__ == "__main__":
     main()
