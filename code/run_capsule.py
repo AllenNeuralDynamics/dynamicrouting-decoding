@@ -9,8 +9,10 @@ import functools
 import logging
 import pathlib
 import time
+import types
+import typing
 import uuid
-from typing import Any, Literal
+from typing import Any, Literal, Union
 
 # 3rd-party imports necessary for processing ----------------------- #
 import numpy as np
@@ -40,23 +42,36 @@ logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR) # suppress 
 
 # utility functions ------------------------------------------------ #
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--session_id', type=str, default=None)
     parser.add_argument('--logging_level', type=str, default='INFO')
+    parser.add_argument('--skip_existing', type=int, default=1)
     parser.add_argument('--test', type=int, default=0)
     parser.add_argument('--override_params_json', type=str, default="{}")
     for field in dataclasses.fields(Params):
         if field.name in [getattr(action, 'dest') for action in parser._actions]:
             # already added field above
             continue
-        logger.debug(f"adding argparse argument {field}")  
+        logger.debug(f"adding argparse argument {field}")
+        kwargs = {}
         if isinstance(field.type, str):
-            type_ = eval(field.type)
+            kwargs = {'type': eval(field.type)}
         else:
-            type_ = field.type
-        parser.add_argument(f'--{field.name}', type=type_)
-    args = parser.parse_known_args()[0]
+            kwargs = {'type': field.type}
+        if kwargs['type'] in (list, tuple):
+            logger.debug(f"Cannot correctly parse list-type arguments from App Builder: skipping {field.name}")
+        if isinstance(field.type, str) and field.type.startswith('Literal'):
+            kwargs['type'] = str
+        if isinstance(kwargs['type'], (types.UnionType, typing._UnionGenericAlias)):
+            kwargs['type'] = typing.get_args(kwargs['type'])[0]
+            logger.info(f"setting argparse type for union type {field.name!r} ({field.type}) as first component {kwargs['type']!r}")
+        parser.add_argument(f'--{field.name}', **kwargs)
+    args = parser.parse_args()
+    list_args = [k for k,v in vars(args).items() if type(v) in (list, tuple)]
+    if list_args:
+        raise NotImplementedError(f"Cannot correctly parse list-type arguments from App Builder: remove {list_args} parameter and provide values via `override_params_json` instead")
     logger.info(f"{args=}")
     return args
 

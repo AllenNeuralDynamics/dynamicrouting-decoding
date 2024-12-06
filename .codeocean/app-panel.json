@@ -71,7 +71,7 @@
 			"param_name": "decoder_type",
 			"type": "text",
 			"value_type": "string",
-			"default_value": "'LogisticRegression'"
+			"default_value": "LogisticRegression"
 		},
 		{
 			"id": "5Lq8N5fGlmWi7M3Z",
