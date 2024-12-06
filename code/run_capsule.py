@@ -48,6 +48,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--session_id', type=str, default=None)
     parser.add_argument('--logging_level', type=str, default='INFO')
     parser.add_argument('--skip_existing', type=int, default=1)
+    parser.add_argument('--update_packages_from_source', type=int, default=1)
     parser.add_argument('--test', type=int, default=0)
     parser.add_argument('--override_params_json', type=str, default="{}")
     for field in dataclasses.fields(Params):
