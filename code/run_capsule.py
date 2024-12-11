@@ -31,8 +31,9 @@ from dynamic_routing_analysis import spike_utils, decoding_utils, data_utils, pa
 # use `logger.info(msg)` instead of `print(msg)` so we get timestamps and origin of log messages
 logging.basicConfig(
     level=logging.INFO, 
-    format="%(asctime)s | %(levelname)s | %(name)s.%(funcName)s | %(message)s",     datefmt="%Y-%d-%m %H:%M:%S",
-    )
+    format="%(asctime)s | %(levelname)s | %(name)s.%(funcName)s | %(message)s",     
+    datefmt="%Y-%d-%m %H:%M:%S",
+)
 logger = logging.getLogger(__name__)
 
 # general configuration -------------------------------------------- #
@@ -210,26 +211,28 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
         single_session=True,
     )
     #find n_units to loop through for next step
-    n_units = []
-    for col in decoding_results.filter(like='true_accuracy_').columns.values:
-        if len(col.split('_'))==3:
-            temp_n_units=col.split('_')[2]
-            try:
-                n_units.append(int(temp_n_units))
-            except:
-                n_units.append(temp_n_units)
-        else:
-            n_units.append(None)
+    print(decoding_results)
+    if decoding_results is not None:
+        n_units = []
+        for col in decoding_results.filter(like='true_accuracy_').columns.values:
+            if len(col.split('_'))==3:
+                temp_n_units=col.split('_')[2]
+                try:
+                    n_units.append(int(temp_n_units))
+                except:
+                    n_units.append(temp_n_units)
+            else:
+                n_units.append(None)
 
-    decoding_results = []
-    for nu in n_units:
-        decoding_utils.concat_trialwise_decoder_results(
-            files=[params.file_path],
-            savepath=params.savepath,
-            return_table=False,
-            n_units=nu,
-            single_session=True,
-        )
+        decoding_results = []
+        for nu in n_units:
+            decoding_utils.concat_trialwise_decoder_results(
+                files=[params.file_path],
+                savepath=params.savepath,
+                return_table=False,
+                n_units=nu,
+                single_session=True,
+            )
 
     logger.info('writing params file for {session_id}')
     params.write_json(params.file_path.with_suffix('.json'))
