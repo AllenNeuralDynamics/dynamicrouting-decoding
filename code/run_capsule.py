@@ -43,7 +43,6 @@ logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR) # suppress 
 
 # utility functions ------------------------------------------------ #
 
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--session_id', type=str, default=None)
@@ -194,8 +193,10 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
     #units: pd.DataFrame =  utils.remove_pynwb_containers_from_table(units[:])
     units['session_id'] = session_id
     units.drop(columns=['waveform_sd','waveform_mean'], inplace=True, errors='ignore')
-                                   
+
+
     logger.info(f'starting decode_context_with_linear_shift for {session_id} with {params.to_json()}')
+
     decoding_utils.decode_context_with_linear_shift(session=session,params=params.to_dict(),trials=trials,units=units)
 
     del units
