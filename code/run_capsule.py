@@ -354,7 +354,7 @@ def main():
     # otherwise we process all session IDs that match filtering criteria:    
     session_table = pd.read_parquet(get_datacube_dir() / 'session_table.parquet')
     session_ids: list[str] = session_table.query(
-        "is_ephys & project=='DynamicRouting' & is_task & is_annotated & ~is_context_naive"
+        "is_ephys & is_task & is_annotated & is_production & issues.isna()"
     )['session_id'].values.tolist()
     if args.session_id is not None:
         if args.session_id not in session_ids:
