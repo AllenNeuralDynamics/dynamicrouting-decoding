@@ -372,6 +372,7 @@ def main():
         except Exception as e:
             import traceback
             traceback.print_exc()
+            logger.exception(session_id+' failed')
         if args.test:
             logger.info("Test mode: exiting after first session")
             break
