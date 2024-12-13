@@ -367,13 +367,13 @@ def main():
 
     # run processing function for each session, with test mode implemented:
     for session_id in session_ids:
-        try:
-            process_session(session_id, params=Params(**params | {'session_id': session_id}), test=args.test, skip_existing=args.skip_existing)
-        except Exception as e:
-            import traceback
-            print(session_id + 'failed')
-            traceback.print_exc()
-            logger.exception(session_id+' failed')
+        #try:
+        process_session(session_id, params=Params(**params | {'session_id': session_id}), test=args.test, skip_existing=args.skip_existing)
+        #except Exception as e:
+            #import traceback
+            #print(session_id + 'failed')
+            #traceback.print_exc()
+            #logger.exception(session_id+' failed')
         if args.test:
             logger.info("Test mode: exiting after first session")
             break
