@@ -352,9 +352,10 @@ def main():
     
     # if session_id is passed as a command line argument, we will only process that session,
     # otherwise we process all session IDs that match filtering criteria:    
-    session_table = pd.read_parquet(get_datacube_dir() / 'session_table.parquet')
+    session_table = pd.read_parquet(get_datacube_dir() / 'session_table.parquet',use_nullable_dtypes=True)
+    session_table['issues']=session_table['issues'].astype(str)
     session_ids: list[str] = session_table.query(
-        "is_ephys & is_task & is_annotated & is_production & issues.isna()"
+        "is_ephys & is_task & is_annotated & is_production & issues=='[]'"
     )['session_id'].values.tolist()
     if args.session_id is not None:
         if args.session_id not in session_ids:
@@ -367,13 +368,13 @@ def main():
 
     # run processing function for each session, with test mode implemented:
     for session_id in session_ids:
-        #try:
-        process_session(session_id, params=Params(**params | {'session_id': session_id}), test=args.test, skip_existing=args.skip_existing)
-        #except Exception as e:
-            #import traceback
-            #print(session_id + 'failed')
-            #traceback.print_exc()
-            #logger.exception(session_id+' failed')
+        try:
+            process_session(session_id, params=Params(**params | {'session_id': session_id}), test=args.test, skip_existing=args.skip_existing)
+        except Exception as e:
+            import traceback
+            print(session_id + 'failed')
+            traceback.print_exc()
+            logger.exception(session_id+' failed')
         if args.test:
             logger.info("Test mode: exiting after first session")
             break
