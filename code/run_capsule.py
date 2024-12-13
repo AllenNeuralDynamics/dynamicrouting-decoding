@@ -371,6 +371,7 @@ def main():
             process_session(session_id, params=Params(**params | {'session_id': session_id}), test=args.test, skip_existing=args.skip_existing)
         except Exception as e:
             import traceback
+            print(session_id + 'failed')
             traceback.print_exc()
             logger.exception(session_id+' failed')
         if args.test:
