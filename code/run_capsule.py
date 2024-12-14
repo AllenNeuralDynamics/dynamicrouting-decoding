@@ -352,7 +352,7 @@ def main():
     
     # if session_id is passed as a command line argument, we will only process that session,
     # otherwise we process all session IDs that match filtering criteria:    
-    session_table = pd.read_parquet(get_datacube_dir() / 'session_table.parquet',use_nullable_dtypes=True)
+    session_table = pd.read_parquet(get_datacube_dir() / 'session_table.parquet')
     session_table['issues']=session_table['issues'].astype(str)
     session_ids: list[str] = session_table.query(
         "is_ephys & is_task & is_annotated & is_production & issues=='[]'"
