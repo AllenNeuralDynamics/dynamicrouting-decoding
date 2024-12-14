@@ -374,8 +374,7 @@ def main():
             import traceback
             tb_str = traceback.format_exception(e, value=e, tb=e.__traceback__)
             tb_str=''.join(tb_str)
-            print(f'error in session {session_id}')
-            print(tb_str)
+            print(f'error in session {session_id}:\n{tb_str}')
 
         if args.test:
             logger.info("Test mode: exiting after first session")
