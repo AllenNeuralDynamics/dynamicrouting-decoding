@@ -370,13 +370,13 @@ def main():
     for session_id in session_ids:
         try:
             process_session(session_id, params=Params(**params | {'session_id': session_id}), test=args.test, skip_existing=args.skip_existing)
+            print(f'session {session_id} completed')
         except Exception as e:
             import traceback
             tb_str = traceback.format_exception(e, value=e, tb=e.__traceback__)
             tb_str=''.join(tb_str)
             print(f'error in session {session_id}:\n{tb_str}')
-        else:
-            print(f'session {session_id} completed')
+            
 
         if args.test:
             logger.info("Test mode: exiting after first session")
