@@ -212,7 +212,7 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
         single_session=True,
     )
     #find n_units to loop through for next step
-    print(decoding_results)
+    #print(decoding_results)
     if decoding_results is not None:
         n_units = []
         for col in decoding_results.filter(like='true_accuracy_').columns.values:
@@ -375,6 +375,8 @@ def main():
             tb_str = traceback.format_exception(e, value=e, tb=e.__traceback__)
             tb_str=''.join(tb_str)
             print(f'error in session {session_id}:\n{tb_str}')
+        else:
+            print('session {session_id} completed')
 
         if args.test:
             logger.info("Test mode: exiting after first session")
