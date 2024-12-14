@@ -376,7 +376,7 @@ def main():
             tb_str=''.join(tb_str)
             print(f'error in session {session_id}:\n{tb_str}')
         else:
-            print('session {session_id} completed')
+            print(f'session {session_id} completed')
 
         if args.test:
             logger.info("Test mode: exiting after first session")
