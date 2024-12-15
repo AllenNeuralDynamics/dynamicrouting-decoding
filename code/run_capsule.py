@@ -165,7 +165,7 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
                 single_session=True,
             )
 
-    logger.info('writing params file for {session_id}')
+    logger.info(f'{session_id} | Writing params file')
     params.write_json(params.file_path.with_suffix('.json'))
     
     
