@@ -143,6 +143,10 @@ def get_df(component: str) -> pl.DataFrame:
     path = get_datacube_dir() / 'consolidated' / f'{component}.parquet'
     return pl.read_parquet(path)
 
+@functools.cache
+def get_nwb_paths() -> tuple[pathlib.Path, ...]:
+    return tuple(get_data_root().rglob('*.nwb'))
+
 def get_nwb(session_id_or_path: str | pathlib.Path, raise_on_missing: bool = True, raise_on_bad_file: bool = True) -> pynwb.NWBFile:
     if isinstance(session_id_or_path, (pathlib.Path, upath.UPath)):
         nwb_path = session_id_or_path
