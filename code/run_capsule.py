@@ -26,15 +26,14 @@ import upath
 import zarr
 from dynamic_routing_analysis import spike_utils, decoding_utils, data_utils, path_utils
 
+import utils
 
 # logging configuration -------------------------------------------- #
 # use `logger.info(msg)` instead of `print(msg)` so we get timestamps and origin of log messages
-logging.basicConfig(
-    level=logging.INFO, 
-    format="%(asctime)s | %(levelname)s | %(name)s.%(funcName)s | %(message)s",     
-    datefmt="%Y-%d-%m %H:%M:%S",
+logger = logging.getLogger(
+    pathlib.Path(__file__).stem if __name__.endswith("_main__") else __name__
+    # multiprocessing gives name '__mp_main__'
 )
-logger = logging.getLogger(__name__)
 
 # general configuration -------------------------------------------- #
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -50,6 +49,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--skip_existing', type=int, default=1)
     parser.add_argument('--update_packages_from_source', type=int, default=1)
     parser.add_argument('--test', type=int, default=0)
+    parser.add_argument('--session_table_query', type=str, default="is_ephys & is_task & is_annotated & is_production & issues=='[]'")
     parser.add_argument('--override_params_json', type=str, default="{}")
     for field in dataclasses.fields(Params):
         if field.name in [getattr(action, 'dest') for action in parser._actions]:
@@ -331,6 +331,8 @@ class Params:
 
 def main():
     t0 = time.time()
+    
+    utils.setup_logging()
 
     # get arguments passed from command line (or "AppBuilder" interface):
     args = parse_args()
@@ -354,29 +356,25 @@ def main():
     # otherwise we process all session IDs that match filtering criteria:    
     session_table = pd.read_parquet(get_datacube_dir() / 'session_table.parquet')
     session_table['issues']=session_table['issues'].astype(str)
-    session_ids: list[str] = session_table.query(
-        "is_ephys & is_task & is_annotated & is_production & issues=='[]'"
-    )['session_id'].values.tolist()
+    session_ids: list[str] = session_table.query(args.session_table_query)['session_id'].values.tolist()
+    logger.debug(f"Found {len(session_ids)} session_ids available for use after filtering")
     if args.session_id is not None:
         if args.session_id not in session_ids:
-            logger.info(f"{args.session_id!r} not in filtered sessions list")
+            logger.warning(f"{args.session_id!r} not in filtered session_ids: exiting")
             exit()
         logger.info(f"Using single session_id {args.session_id} provided via command line argument")
         session_ids = [args.session_id]
     else:
-        logger.info(f"Using list of {len(session_ids)} session_ids")
+        logger.info(f"Using list of {len(session_ids)} session_ids after filtering")
 
     # run processing function for each session, with test mode implemented:
     for session_id in session_ids:
         try:
             process_session(session_id, params=Params(**params | {'session_id': session_id}), test=args.test, skip_existing=args.skip_existing)
-            print(f'session {session_id} completed')
         except Exception as e:
-            import traceback
-            tb_str = traceback.format_exception(e, value=e, tb=e.__traceback__)
-            tb_str=''.join(tb_str)
-            print(f'error in session {session_id}:\n{tb_str}')
-            
+            logger.exception(f'{session_id} | Failed:')
+        else:
+            logger.info(f'{session_id} | Completed')
 
         if args.test:
             logger.info("Test mode: exiting after first session")

@@ -26,7 +26,7 @@
 			"packages": [
 				{
 					"name": "git+https://github.com/AllenInstitute/dynamic_routing_analysis#egg=dynamic-routing-analysis",
-					"version": "110714cfb95c1531cbac6a98b1dd59d4f0ae2984"
+					"version": "bcd0017aee5d92147152076e41d954e9bee74937"
 				},
 				{
 					"name": "matplotlib",
