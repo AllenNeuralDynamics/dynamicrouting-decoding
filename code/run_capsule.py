@@ -200,7 +200,7 @@ class Params:
     vid_angle_facemotion: str | Literal['behavior', 'face', 'eye'] = 'face'
     vid_angle_LP: str | Literal['behavior', 'face', 'eye'] = 'behavior'
     central_section: str = '4_blocks_plus'
-    """or linear shift decoding, how many trials to use for the shift. '4_blocks_plus' is best"""
+    """for linear shift decoding, how many trials to use for the shift. '4_blocks_plus' is best"""
     exclude_cue_trials: bool = False
     """option to totally exclude autorewarded trials"""
     n_unit_threshold: int = 5
@@ -220,6 +220,14 @@ class Params:
     decoder_type: str | Literal['linearSVC', 'LDA', 'RandomForest', 'LogisticRegression'] = 'LogisticRegression'
     only_use_all_units: bool = False
     """if True, do not run decoding with different areas, only with all areas -- for debugging"""
+    predict: str = 'context'
+    """ 'context' = predict context; 'vis_appropriate_response' = predict whether the mouse's response was appropriate for a visual context block """
+    regularization: float | None = None
+    """ set regularization (C) for the decoder. Setting to None reverts to the default value (usually 1.0) """
+    penalty: str | None = None
+    """ set penalty for the decoder. Setting to None reverts to default """
+    solver: str | None = None
+    """ set solver for the decoder. Setting to None reverts to default """
 
     @property
     def savepath(self) -> upath.UPath:
