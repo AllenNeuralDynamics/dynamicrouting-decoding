@@ -247,6 +247,8 @@ class Params:
             return 'isi_violations_ratio<=0.5 and presence_ratio>=0.9 and amplitude_cutoff<=0.1'
         elif self.unit_criteria == 'strict':
             return 'isi_violations_ratio<=0.1 and presence_ratio>=0.99 and amplitude_cutoff<=0.1'
+        elif self.unit_criteria == 'use_sliding_rp':
+            return 'sliding_rp_violation<=0.1 and presence_ratio>=0.99 and amplitude_cutoff<=0.1'
         else:
             raise ValueError(f"No units query available for {self.unit_criteria=!r}")
 
