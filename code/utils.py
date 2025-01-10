@@ -107,7 +107,7 @@ def setup_logging(
     
     formatter = PSTFormatter( # use Seattle time
         fmt=fmt,
-        datefmt="%Y-%d-%m %H:%M:%S %Z",
+        datefmt="%Y-%m-%d %H:%M:%S %Z",
     )
     
     handlers: list[logging.Handler] = []
