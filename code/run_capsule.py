@@ -115,7 +115,16 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
     
     # Get components from the nwb file:
     trials = session.trials[:]
-    units = session.units[:].query(params.units_query)
+    if 'recalc' in params.unit_criteria:
+        recalc_path='/data/dynamicrouting_unit_metrics_recalculated/units_with_recalc_metrics.csv'
+        recalculated_unit_metrics = pd.read_csv(recalc_path)
+        sel_units = recalculated_unit_metrics.query(params.units_query)['unit_id'].tolist()
+
+        units = session.units[:].query("unit_id in @sel_units")
+
+    else:
+        units = session.units[:].query(params.units_query)
+
     if test:
         logger.info(f"Test mode: using reduced set of units")
         units = units.sort_values('location').head(20)
@@ -249,6 +258,8 @@ class Params:
             return 'isi_violations_ratio<=0.1 and presence_ratio>=0.99 and amplitude_cutoff<=0.1'
         elif self.unit_criteria == 'use_sliding_rp':
             return 'sliding_rp_violation<=0.1 and presence_ratio>=0.99 and amplitude_cutoff<=0.1'
+        elif self.unit_criteria == 'recalc_presence_ratio':
+            return 'sliding_rp_violation<=0.1 and presence_ratio_task>=0.99 and amplitude_cutoff<=0.1'
         else:
             raise ValueError(f"No units query available for {self.unit_criteria=!r}")
 

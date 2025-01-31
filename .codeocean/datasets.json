@@ -2,6 +2,10 @@
 	"version": 1,
 	"attached_datasets": [
 		{
+			"id": "26c7d41d-85d9-4afa-9f09-2ac3d6715c0c",
+			"mount": "dynamicrouting_unit_metrics_recalculated"
+		},
+		{
 			"id": "4f3606d5-bee5-4f48-a3ec-dcf6ba7d25e7",
 			"mount": "dynamicrouting_datacube_v0.0.260"
 		}
