@@ -125,6 +125,12 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
     else:
         units = session.units[:].query(params.units_query)
 
+    if params.select_single_area is not None:
+        units = units.query('structure==@params.select_single_area')
+        if len(units)==0:
+            logger.error(f"Structure does not exist in session; skipping")
+            return
+
     if test:
         logger.info(f"Test mode: using reduced set of units")
         units = units.sort_values('location').head(20)
@@ -237,6 +243,8 @@ class Params:
     """ set penalty for the decoder. Setting to None reverts to default """
     solver: str | None = None
     """ set solver for the decoder. Setting to None reverts to default """
+    select_single_area: str | None = None
+    """ select a single area to run decoding analysis on. If None, run on all areas """
 
     @property
     def savepath(self) -> upath.UPath:
