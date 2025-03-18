@@ -29,6 +29,14 @@
 					"version": "5f84dd04eebbfedd18de262cd1b57e2bc67f964b"
 				},
 				{
+					"name": "hdmf",
+					"version": "3.14.6"
+				},
+				{
+					"name": "hdmf-zarr",
+					"version": "0.9.0"
+				},
+				{
 					"name": "matplotlib",
 					"version": "3.9.2"
 				},

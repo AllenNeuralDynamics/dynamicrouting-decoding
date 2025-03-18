@@ -260,6 +260,14 @@ class Params:
             return 'sliding_rp_violation<=0.1 and presence_ratio>=0.99 and amplitude_cutoff<=0.1'
         elif self.unit_criteria == 'recalc_presence_ratio':
             return 'sliding_rp_violation<=0.1 and presence_ratio_task>=0.99 and amplitude_cutoff<=0.1'
+        elif self.unit_criteria == 'no_drift':
+            return 'decoder_label!="noise" and isi_violations_ratio<=0.5 and presence_ratio>=0.7 and amplitude_cutoff<=0.1'
+        elif self.unit_criteria == 'loose_drift':
+            return 'activity_drift<=0.2 and decoder_label!="noise" and isi_violations_ratio<=0.5 and presence_ratio>=0.7 and amplitude_cutoff<=0.1'
+        elif self.unit_criteria == 'medium_drift':
+            return 'activity_drift<=0.15 and decoder_label!="noise" and isi_violations_ratio<=0.5 and presence_ratio>=0.7 and amplitude_cutoff<=0.1'
+        elif self.unit_criteria == 'strict_drift':
+            return 'activity_drift<=0.1 and decoder_label!="noise" and isi_violations_ratio<=0.5 and presence_ratio>=0.7 and amplitude_cutoff<=0.1'
         else:
             raise ValueError(f"No units query available for {self.unit_criteria=!r}")
 
