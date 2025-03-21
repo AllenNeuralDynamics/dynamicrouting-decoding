@@ -25,8 +25,7 @@
 		"pip3": {
 			"packages": [
 				{
-					"name": "git+https://github.com/AllenInstitute/dynamic_routing_analysis#egg=dynamic-routing-analysis",
-					"version": "5f84dd04eebbfedd18de262cd1b57e2bc67f964b"
+					"name": "git+https://github.com/AllenInstitute/dynamic_routing_analysis#egg=dynamic-routing-analysis"
 				},
 				{
 					"name": "hdmf",

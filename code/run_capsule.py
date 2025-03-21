@@ -139,6 +139,8 @@ def process_session(session_id: str, params: "Params", test: int = 0, skip_exist
     units['session_id'] = session_id
     units.drop(columns=['waveform_sd','waveform_mean'], inplace=True, errors='ignore')
 
+    cols_to_keep=['unit_id','session_id','structure','electrode_group_name','spike_times','ccf_ap', 'ccf_dv', 'ccf_ml']
+    units=units[cols_to_keep]
 
     logger.info(f'starting decode_context_with_linear_shift for {session_id} with {params.to_json()}')
 
@@ -245,6 +247,8 @@ class Params:
     """ set solver for the decoder. Setting to None reverts to default """
     select_single_area: str | None = None
     """ select a single area to run decoding analysis on. If None, run on all areas """
+    split_area_by_probe: int = 1
+    """ splits area units by probe if recorded by more than one probe"""
 
     @property
     def savepath(self) -> upath.UPath:

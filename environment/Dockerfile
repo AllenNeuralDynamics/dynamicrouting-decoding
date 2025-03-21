@@ -1,4 +1,4 @@
-# hash:sha256:422d2c14d9ded29c57f4aa5c1eb8d74f3e7e33346eb66ab12bf85c476f4d80f1
+# hash:sha256:4d44e3900db42b84e02081dbde81a8f5298a4f0902638bc8971fa240e4edfec6
 ARG REGISTRY_HOST
 FROM $REGISTRY_HOST/codeocean/mambaforge3:23.1.0-4-python3.10.12-ubuntu22.04
 
@@ -26,4 +26,4 @@ RUN pip3 install -U --no-cache-dir \
     pynwb==2.8.2 \
     scikit-learn==1.5.2 \
     zarr==2.18.0 \
-    -e git+https://github.com/AllenInstitute/dynamic_routing_analysis@5f84dd04eebbfedd18de262cd1b57e2bc67f964b#egg=dynamic-routing-analysis
+    -e git+https://github.com/AllenInstitute/dynamic_routing_analysis#egg=dynamic-routing-analysis
