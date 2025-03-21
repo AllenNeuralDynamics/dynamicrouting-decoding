@@ -209,7 +209,7 @@ class Params:
 
     folder_name: str = "test"
     unit_criteria: str = 'medium'
-    n_units: list = dataclasses.field(default_factory=lambda: [5, 10, 20, 30, 40, 50, 'all'])
+    n_units: list = dataclasses.field(default_factory=lambda: [20, 'all'])
     """number of units to sample for each area"""
     n_repeats: int = 25
     """number of times to repeat decoding with different randomly sampled units"""
@@ -220,7 +220,7 @@ class Params:
     """for linear shift decoding, how many trials to use for the shift. '4_blocks_plus' is best"""
     exclude_cue_trials: bool = False
     """option to totally exclude autorewarded trials"""
-    n_unit_threshold: int = 5
+    n_unit_threshold: int = 10
     """minimum number of units to include an area in the analysis"""
     keep_n_SVDs: int = 500
     """number of SVD components to keep for facemap data"""
