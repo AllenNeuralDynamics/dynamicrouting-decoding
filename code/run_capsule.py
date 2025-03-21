@@ -280,6 +280,15 @@ class Params:
             return 'activity_drift<=0.15 and decoder_label!="noise" and isi_violations_ratio<=0.5 and presence_ratio>=0.7 and amplitude_cutoff<=0.1'
         elif self.unit_criteria == 'strict_drift':
             return 'activity_drift<=0.1 and decoder_label!="noise" and isi_violations_ratio<=0.5 and presence_ratio>=0.7 and amplitude_cutoff<=0.1'
+        elif self.unit_criteria == 'no_drift_no_pr':
+            return 'decoder_label!="noise" and isi_violations_ratio<=0.5 and amplitude_cutoff<=0.1'
+        elif self.unit_criteria == 'loose_drift_no_pr':
+            return 'activity_drift<=0.2 and decoder_label!="noise" and isi_violations_ratio<=0.5 and amplitude_cutoff<=0.1'
+        elif self.unit_criteria == 'medium_drift_no_pr':
+            return 'activity_drift<=0.15 and decoder_label!="noise" and isi_violations_ratio<=0.5 and amplitude_cutoff<=0.1'
+        elif self.unit_criteria == 'strict_drift_no_pr':
+            return 'activity_drift<=0.1 and decoder_label!="noise" and isi_violations_ratio<=0.5 and amplitude_cutoff<=0.1'
+        
         else:
             raise ValueError(f"No units query available for {self.unit_criteria=!r}")
 
